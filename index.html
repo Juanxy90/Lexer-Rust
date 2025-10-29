@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lexer Rust</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 20px;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ff7b00;
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 10px;
+            resize: vertical;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            text-align: center;
+            background-color: #2a2a2a;
+            color: #f8f8f2;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            border: 1px solid #444;
+            padding: 10px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #3a3a3a;
+            color: #ff7b00;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        tr:nth-child(even) {
+            background-color: #242424;
+        }
+
+        tr:hover {
+            background-color: #333;
+        }
+
+        .error {
+            color: #ff5555;
+        }
+
+        #analyzeBtn {
+            display: block;
+            margin: 25px auto;
+            padding: 14px 40px;
+            font-size: 18px;
+            background-color: #ff7b00;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        #analyzeBtn:hover {
+            background-color: #e36b00;
+            transform: scale(1.05);
+        }
+
+        h2 {
+            text-align: center;
+            color: #ff7b00;
+            margin-top: 40px;
+            text-transform: uppercase;
+        }
+
+        #errorsList {
+            list-style: none;
+            padding: 0;
+            text-align: center;
+        }
+
+        #errorsList li {
+            background: #3a1f1f;
+            margin: 8px auto;
+            display: block;
+            width: 60%;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .rust-logo {
+            display: block;
+            margin: 0 auto 20px auto;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>ANALIZADOR LÉXICO - RUST</h1>
+    <img src="https://www.rust-lang.org/logos/rust-logo-512x512.png" alt="Rust Logo" class="rust-logo">
+
+    <textarea id="codeInput" placeholder="Escribe tu código Rust aquí..."></textarea>
+
+    <button id="analyzeBtn">Analizar</button>
+
+    <h2>Tokens</h2>
+    <table id="tokensTable">
+        <thead>
+            <tr>
+                <th>Lexema</th>
+                <th>Token</th>
+                <th>Fila</th>
+                <th>Columna</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h2>Errores</h2>
+    <ul id="errorsList" class="error"></ul>
+
+    <script type="module" src="./main.js"></script>
+</body>
+
+</html>
