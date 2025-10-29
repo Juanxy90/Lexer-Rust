@@ -1,0 +1,12 @@
+{
+  "name": "lexer_rust",
+  "version": "1.0.0",
+  "description": "Compilador Lógico Rust",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": ", Lida Marcela Gualteros Torres, César Fabián Londoño Nené & Juan Pablo Mora Ramírez",
+  "license": "MIT"
+}
