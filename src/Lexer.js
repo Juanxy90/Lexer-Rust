@@ -130,24 +130,23 @@ class Lexer {
             if (matchedSuffix) continue;
 
             // Números (enteros y decimales)
-
+            
             if (this.isDigit(ch)) {
-                let lex = '';
+                const startLine = this.line, startCol = this.col;
+                let lex = this.advance();
 
                 // Parte entera
-
+                
                 while (this.isDigit(this.peek())) lex += this.advance();
-                this.advance();
-                lex = ch + lex;
 
                 // Parte decimal
-
+                
                 if (this.peek() === '.' && this.isDigit(this.peek(1))) {
                     lex += this.advance();
                     while (this.isDigit(this.peek())) lex += this.advance();
 
                     // Sufijo flotante (f32, f64)
-
+                    
                     let hasSuffix = false;
                     for (let suf of floatSuffixes) {
                         if (this.input.startsWith(suf, this.pos)) {
@@ -161,8 +160,8 @@ class Lexer {
                     continue;
                 }
 
-                // Parte entera con posible sufijo (i32, u8, etc.)
-
+                // Parte entera con posible sufijo
+                
                 let matched = false;
                 for (let suf of [...inum, ...unum]) {
                     if (this.input.startsWith(suf, this.pos)) {
