@@ -130,23 +130,24 @@ class Lexer {
             if (matchedSuffix) continue;
 
             // Números (enteros y decimales)
-            
+
             if (this.isDigit(ch)) {
-                const startLine = this.line, startCol = this.col;
-                let lex = this.advance();
+                let lex = '';
 
                 // Parte entera
-                
+
                 while (this.isDigit(this.peek())) lex += this.advance();
+                this.advance();
+                lex = ch + lex;
 
                 // Parte decimal
-                
+
                 if (this.peek() === '.' && this.isDigit(this.peek(1))) {
                     lex += this.advance();
                     while (this.isDigit(this.peek())) lex += this.advance();
 
                     // Sufijo flotante (f32, f64)
-                    
+
                     let hasSuffix = false;
                     for (let suf of floatSuffixes) {
                         if (this.input.startsWith(suf, this.pos)) {
@@ -160,8 +161,8 @@ class Lexer {
                     continue;
                 }
 
-                // Parte entera con posible sufijo
-                
+                // Parte entera con posible sufijo (i32, u8, etc.)
+
                 let matched = false;
                 for (let suf of [...inum, ...unum]) {
                     if (this.input.startsWith(suf, this.pos)) {
@@ -255,6 +256,36 @@ class Lexer {
             if (ch === '-' && this.peek(1) === '>') {
                 this.addToken('OPERADOR FLECHA', '->', startLine, startCol);
                 this.advance(); this.advance(); continue;
+            }
+
+            // Caracteres (char)
+            
+            if (ch === "'") {
+                this.advance();
+                let lex = "'";
+                let c = this.peek();
+
+                // Soporte para caracteres escapados o unicode
+
+                if (c === '\\') {
+                    lex += this.advance();
+                    const next = this.advance();
+                    lex += next;
+                } else if (c !== null && c !== "'" && c !== '\n') {
+                    lex += this.advance();
+                } else {
+                    this.errors.add("Carácter vacío o inválido", startLine, startCol);
+                }
+
+                // Verificar cierre
+
+                if (this.peek() === "'") {
+                    lex += this.advance(); // comilla final
+                    this.addToken('CARACTER', lex, startLine, startCol);
+                } else {
+                    this.errors.add("Carácter sin cerrar", startLine, startCol);
+                }
+                continue;
             }
 
             if (ch === '"') {
