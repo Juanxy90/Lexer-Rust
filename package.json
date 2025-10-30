@@ -7,6 +7,6 @@
   "scripts": {
     "start": "node index.js"
   },
-  "author": ", Lida Marcela Gualteros Torres, César Fabián Londoño Nené & Juan Pablo Mora Ramírez",
+  "author": "Lida Marcela Gualteros Torres, César Fabián Londoño Nené & Juan Pablo Mora Ramírez",
   "license": "MIT"
 }
