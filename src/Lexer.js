@@ -38,6 +38,7 @@ class Lexer {
             const startLine = this.line, startCol = this.col;
 
             // Saltos de línea y tabulación
+
             if (ch === '\\') {
                 const next = this.peek(1);
                 if (next === 'n') {
@@ -65,6 +66,7 @@ class Lexer {
             if (' \t\r\n'.includes(ch)) { this.advance(); continue; }
 
             // Comentarios
+
             if (ch === '/') {
                 if (this.peek(1) === '/') {
                     this.advance(); this.advance();
@@ -95,6 +97,7 @@ class Lexer {
             }
 
             // Rango .. y ..=
+
             if (ch === '.' && this.peek(1) === '.') {
                 if (this.peek(2) === '=') {
                     this.addToken('RANGO INCLUSIVO', '..=', startLine, startCol);
@@ -107,6 +110,7 @@ class Lexer {
             }
 
             // Tipos numéricos
+
             const floatSuffixes = ["f32", "f64"];
             const inum = ["i8", "i16", "i32", "i64", "i128", "isize"];
             const unum = ["u8", "u16", "u32", "u64", "u128", "usize"];
@@ -126,12 +130,14 @@ class Lexer {
             if (matchedSuffix) continue;
 
             // Números (enteros y decimales)
+
             if (this.isDigit(ch)) {
                 let lex = this.advance();
 
                 while (this.isDigit(this.peek())) lex += this.advance();
 
                 // Parte decimal
+
                 if (this.peek() === '.' && this.isDigit(this.peek(1))) {
                     lex += this.advance();
                     while (this.isDigit(this.peek())) lex += this.advance();
@@ -164,6 +170,7 @@ class Lexer {
             }
 
             // Separadores
+
             if (ch === ';') { this.addToken('FIN DE SENTENCIA', this.advance(), startLine, startCol); continue; }
             if (ch === ',') { this.addToken('SEPARADOR LÓGICO', this.advance(), startLine, startCol); continue; }
             if (ch === ':' && this.peek(1) === ':') {
@@ -173,6 +180,7 @@ class Lexer {
             if (ch === '.') { this.addToken('OPERADOR PUNTO', this.advance(), startLine, startCol); continue; }
 
             // Identificadores / keywords / macros
+
             if (this.isLetter(ch)) {
                 let lex = this.advance();
                 while (this.isAlnum(this.peek())) lex += this.advance();
@@ -194,6 +202,7 @@ class Lexer {
             }
 
             // Caracteres (char)
+
             if (ch === "'") {
                 this.advance();
                 let lex = "'";
@@ -219,6 +228,7 @@ class Lexer {
             }
 
             // Cadenas
+
             if (ch === '"') {
                 this.advance();
                 let lex = '"';
@@ -236,6 +246,7 @@ class Lexer {
             }
 
             // Operadores y símbolos varios
+
             const two = ch + (this.peek(1) || '');
             if (['==', '!=', '<=', '>='].includes(two)) {
                 this.addToken('OPERADOR DE COMPARACIÓN', two, startLine, startCol);
@@ -249,7 +260,7 @@ class Lexer {
                 this.addToken('OPERADOR LÓGICO', two, startLine, startCol);
                 this.advance(); this.advance(); continue;
             }
-            if (['++', '--'].includes(two)) {
+            if (['+=', '-='].includes(two)) {
                 this.addToken('OPERADOR DE INCREMENTO/DECREMENTO', two, startLine, startCol);
                 this.advance(); this.advance(); continue;
             }
@@ -279,6 +290,7 @@ class Lexer {
             }
 
             // Token desconocido
+
             this.errors.add(`Token no reconocido '${ch}'`, startLine, startCol);
             this.advance();
         }
