@@ -247,6 +247,11 @@ class Lexer {
 
             // Operadores y símbolos varios
 
+            if (ch === '-' && this.peek(1) === '>') {
+                this.addToken('OPERADOR FLECHA', '->', startLine, startCol);
+                this.advance(); this.advance(); continue;
+            }
+
             const two = ch + (this.peek(1) || '');
             if (['==', '!=', '<=', '>='].includes(two)) {
                 this.addToken('OPERADOR DE COMPARACIÓN', two, startLine, startCol);
@@ -283,11 +288,6 @@ class Lexer {
             if (ch === '}') { this.addToken('CIERRE DE LLAVE', this.advance(), startLine, startCol); continue; }
             if (ch === '[') { this.addToken('APERTURA DE CORCHETE', this.advance(), startLine, startCol); continue; }
             if (ch === ']') { this.addToken('CIERRE DE CORCHETE', this.advance(), startLine, startCol); continue; }
-
-            if (ch === '-' && this.peek(1) === '>') {
-                this.addToken('OPERADOR FLECHA', '->', startLine, startCol);
-                this.advance(); this.advance(); continue;
-            }
 
             // Token desconocido
 
