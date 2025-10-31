@@ -1,4 +1,4 @@
-import Token from './Token.js'
+import Token from './Token.js';
 import ErrorHandler from './ErrorHandler.js';
 
 class Lexer {
@@ -38,7 +38,6 @@ class Lexer {
             const startLine = this.line, startCol = this.col;
 
             // Saltos de línea y tabulación
-
             if (ch === '\\') {
                 const next = this.peek(1);
                 if (next === 'n') {
@@ -66,7 +65,6 @@ class Lexer {
             if (' \t\r\n'.includes(ch)) { this.advance(); continue; }
 
             // Comentarios
-
             if (ch === '/') {
                 if (this.peek(1) === '/') {
                     this.advance(); this.advance();
@@ -97,7 +95,6 @@ class Lexer {
             }
 
             // Rango .. y ..=
-
             if (ch === '.' && this.peek(1) === '.') {
                 if (this.peek(2) === '=') {
                     this.addToken('RANGO INCLUSIVO', '..=', startLine, startCol);
@@ -110,7 +107,6 @@ class Lexer {
             }
 
             // Tipos numéricos
-
             const floatSuffixes = ["f32", "f64"];
             const inum = ["i8", "i16", "i32", "i64", "i128", "isize"];
             const unum = ["u8", "u16", "u32", "u64", "u128", "usize"];
@@ -130,23 +126,15 @@ class Lexer {
             if (matchedSuffix) continue;
 
             // Números (enteros y decimales)
-
             if (this.isDigit(ch)) {
-                let lex = '';
-
-                // Parte entera
+                let lex = this.advance();
 
                 while (this.isDigit(this.peek())) lex += this.advance();
-                this.advance();
-                lex = ch + lex;
 
                 // Parte decimal
-
                 if (this.peek() === '.' && this.isDigit(this.peek(1))) {
                     lex += this.advance();
                     while (this.isDigit(this.peek())) lex += this.advance();
-
-                    // Sufijo flotante (f32, f64)
 
                     let hasSuffix = false;
                     for (let suf of floatSuffixes) {
@@ -160,8 +148,6 @@ class Lexer {
                     this.addToken(hasSuffix ? 'DECIMAL TIPADO' : 'DECIMAL', lex, startLine, startCol);
                     continue;
                 }
-
-                // Parte entera con posible sufijo (i32, u8, etc.)
 
                 let matched = false;
                 for (let suf of [...inum, ...unum]) {
@@ -178,7 +164,6 @@ class Lexer {
             }
 
             // Separadores
-
             if (ch === ';') { this.addToken('FIN DE SENTENCIA', this.advance(), startLine, startCol); continue; }
             if (ch === ',') { this.addToken('SEPARADOR LÓGICO', this.advance(), startLine, startCol); continue; }
             if (ch === ':' && this.peek(1) === ':') {
@@ -188,19 +173,14 @@ class Lexer {
             if (ch === '.') { this.addToken('OPERADOR PUNTO', this.advance(), startLine, startCol); continue; }
 
             // Identificadores / keywords / macros
-
             if (this.isLetter(ch)) {
                 let lex = this.advance();
                 while (this.isAlnum(this.peek())) lex += this.advance();
-
-                // Si el identificador es demasiado largo, se registra el error y no se agrega el token
 
                 if (lex.length > 15) {
                     this.errors.add("Identificador muy largo", startLine, startCol);
                     continue;
                 }
-
-                // Si termina en '!' es macro o palabra reservada con macro
 
                 if (this.peek() === '!') {
                     lex += this.advance();
@@ -208,14 +188,54 @@ class Lexer {
                     continue;
                 }
 
-                // Determinar si es palabra reservada o identificador normal
                 const tipo = this.keywords.has(lex) ? 'PALABRA RESERVADA' : 'IDENTIFICADOR';
                 this.addToken(tipo, lex, startLine, startCol);
                 continue;
             }
 
-            // Operadores y símbolos varios
+            // Caracteres (char)
+            if (ch === "'") {
+                this.advance();
+                let lex = "'";
+                let c = this.peek();
 
+                if (c === '\\') {
+                    lex += this.advance();
+                    const next = this.advance();
+                    lex += next;
+                } else if (c !== null && c !== "'" && c !== '\n') {
+                    lex += this.advance();
+                } else {
+                    this.errors.add("Carácter vacío o inválido", startLine, startCol);
+                }
+
+                if (this.peek() === "'") {
+                    lex += this.advance();
+                    this.addToken('CARACTER', lex, startLine, startCol);
+                } else {
+                    this.errors.add("Carácter sin cerrar", startLine, startCol);
+                }
+                continue;
+            }
+
+            // Cadenas
+            if (ch === '"') {
+                this.advance();
+                let lex = '"';
+                let closed = false;
+                while (this.peek() !== null) {
+                    const c = this.advance();
+                    lex += c;
+                    if (c === '\\') { lex += this.advance(); continue; }
+                    if (c === '"') { closed = true; break; }
+                    if (c === '\n') { this.errors.add("Cadena sin cerrar", startLine, startCol); break; }
+                }
+                if (!closed) this.errors.add("Cadena sin cerrar", startLine, startCol);
+                else this.addToken('CADENA', lex, startLine, startCol);
+                continue;
+            }
+
+            // Operadores y símbolos varios
             const two = ch + (this.peek(1) || '');
             if (['==', '!=', '<=', '>='].includes(two)) {
                 this.addToken('OPERADOR DE COMPARACIÓN', two, startLine, startCol);
@@ -258,55 +278,11 @@ class Lexer {
                 this.advance(); this.advance(); continue;
             }
 
-            // Caracteres (char)
-            
-            if (ch === "'") {
-                this.advance();
-                let lex = "'";
-                let c = this.peek();
-
-                // Soporte para caracteres escapados o unicode
-
-                if (c === '\\') {
-                    lex += this.advance();
-                    const next = this.advance();
-                    lex += next;
-                } else if (c !== null && c !== "'" && c !== '\n') {
-                    lex += this.advance();
-                } else {
-                    this.errors.add("Carácter vacío o inválido", startLine, startCol);
-                }
-
-                // Verificar cierre
-
-                if (this.peek() === "'") {
-                    lex += this.advance(); // comilla final
-                    this.addToken('CARACTER', lex, startLine, startCol);
-                } else {
-                    this.errors.add("Carácter sin cerrar", startLine, startCol);
-                }
-                continue;
-            }
-
-            if (ch === '"') {
-                this.advance();
-                let lex = '"';
-                let closed = false;
-                while (this.peek() !== null) {
-                    const c = this.advance();
-                    lex += c;
-                    if (c === '\\') { lex += this.advance(); continue; }
-                    if (c === '"') { closed = true; break; }
-                    if (c === '\n') { this.errors.add("Cadena sin cerrar", startLine, startCol); break; }
-                }
-                if (!closed) this.errors.add("Cadena sin cerrar", startLine, startCol);
-                else this.addToken('CADENA', lex, startLine, startCol);
-                continue;
-            }
-
+            // Token desconocido
             this.errors.add(`Token no reconocido '${ch}'`, startLine, startCol);
             this.advance();
         }
+
         return { tokens: this.tokens, errors: this.errors.errors };
     }
 }
