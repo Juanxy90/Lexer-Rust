@@ -179,6 +179,14 @@ class Lexer {
             }
             if (ch === '.') { this.addToken('OPERADOR PUNTO', this.advance(), startLine, startCol); continue; }
 
+            // Patrón anónimo (guion bajo)
+
+            if (ch === '_') {
+                this.advance();
+                this.addToken('PATRÓN ANÓNIMO', '_', startLine, startCol);
+                continue;
+            }
+
             // Identificadores / keywords / macros
 
             if (this.isLetter(ch)) {
@@ -192,7 +200,7 @@ class Lexer {
 
                 if (this.peek() === '!') {
                     lex += this.advance();
-                    this.addToken('PALABRA RESERVADA', lex, startLine, startCol);
+                    this.addToken('MACRO', lex, startLine, startCol);
                     continue;
                 }
 
@@ -246,6 +254,12 @@ class Lexer {
             }
 
             // Operadores y símbolos varios
+
+            if (ch === '=' && this.peek(1) === '>') {
+                this.addToken('OPERADOR FLECHA', '=>', startLine, startCol);
+                this.advance(); this.advance();
+                continue;
+            }
 
             if (ch === '-' && this.peek(1) === '>') {
                 this.addToken('OPERADOR FLECHA', '->', startLine, startCol);
