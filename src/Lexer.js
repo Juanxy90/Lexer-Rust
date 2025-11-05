@@ -28,7 +28,7 @@ class Lexer {
     addToken(type, lexeme, startLine, startCol) {
         this.tokens.push(new Token(type, lexeme, startLine, startCol));
     }
-    isLetter(ch) { return ch !== null && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ_]/.test(ch); }
+    isLetter(ch) { return ch !== null && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(ch); }
     isDigit(ch) { return ch !== null && ch >= '0' && ch <= '9'; }
     isAlnum(ch) { return ch !== null && (this.isLetter(ch) || this.isDigit(ch)); }
 
@@ -129,18 +129,94 @@ class Lexer {
             }
             if (matchedSuffix) continue;
 
-            // Números (enteros y decimales)
+            // Números (enteros y decimales, con signo opcional)
 
-            if (this.isDigit(ch)) {
-                let lex = this.advance();
+            if (
+                this.isDigit(ch) ||
+                ((ch === '+' || ch === '-') && this.isDigit(this.peek(1))) ||
+                (ch === '_' && this.isDigit(this.peek(1)))
+            ) {
+                let sign = '';
+                if (ch === '+' || ch === '-') {
 
-                while (this.isDigit(this.peek())) lex += this.advance();
+                    // Detecta si el signo pertenece al número (unario)
+
+                    const prev = this.tokens[this.tokens.length - 1];
+                    const puedeSerUnario =
+                        !prev ||
+                        ['OPERADOR ARITMÉTICO', 'OPERADOR DE COMPARACIÓN', 'OPERADOR DE ASIGNACIÓN',
+                            'APERTURA DE PARENTESIS', 'APERTURA DE LLAVE', 'APERTURA DE CORCHETE',
+                            'SEPARADOR LÓGICO', 'FIN DE SENTENCIA', 'RETORNO DE CARRO', 'SALTO DE LÍNEA']
+                            .includes(prev.type);
+                    if (puedeSerUnario) {
+                        sign = this.advance(); // consume + o -
+                        ch = this.peek();      // actualiza ch al primer dígito
+                    }
+                }
+
+                if (ch === '_') {
+                    let lex = this.advance();
+                    while (this.isDigit(this.peek()) || this.peek() === '_') lex += this.advance();
+                    this.errors.add(`Uso inválido de '_' al inicio del número (${lex})`, startLine, startCol);
+
+                    while (this.isDigit(this.peek()) || this.peek() === '.' || this.peek() === '_')
+                        this.advance();
+                    continue;
+                }
+
+                let lex = sign + this.advance();
+                let lastWasUnderscore = false;
+                let invalidNumber = false;
+
+                // Parte entera con validación de guiones bajos
+
+                while (this.isDigit(this.peek()) || this.peek() === '_') {
+                    if (this.peek() === '_') {
+                        if (lastWasUnderscore || !this.isDigit(this.peek(1))) {
+                            this.errors.add(
+                                `Uso inválido de '_' en número (${lex + '_'})`,
+                                startLine,
+                                startCol
+                            );
+                            invalidNumber = true;
+                            while (this.peek() === '_') this.advance();
+                            while (this.isDigit(this.peek())) this.advance();
+                            break;
+                        }
+                        lastWasUnderscore = true;
+                        lex += this.advance();
+                    } else {
+                        lastWasUnderscore = false;
+                        lex += this.advance();
+                    }
+                }
 
                 // Parte decimal
 
-                if (this.peek() === '.' && this.isDigit(this.peek(1))) {
+                if (!invalidNumber && this.peek() === '.' && this.isDigit(this.peek(1))) {
                     lex += this.advance();
-                    while (this.isDigit(this.peek())) lex += this.advance();
+                    lastWasUnderscore = false;
+
+                    while (this.isDigit(this.peek()) || this.peek() === '_') {
+                        if (this.peek() === '_') {
+                            if (lastWasUnderscore || !this.isDigit(this.peek(1))) {
+                                this.errors.add(
+                                    `Uso inválido de '_' en número decimal (${lex + '_'})`,
+                                    startLine,
+                                    startCol
+                                );
+                                invalidNumber = true;
+                                while (this.peek() === '_') this.advance();
+                                while (this.isDigit(this.peek())) this.advance();
+                                break;
+                            }
+                            lastWasUnderscore = true;
+                            lex += this.advance();
+                        } else {
+                            lastWasUnderscore = false;
+                            lex += this.advance();
+                        }
+                    }
 
                     let hasSuffix = false;
                     for (let suf of floatSuffixes) {
@@ -151,9 +227,14 @@ class Lexer {
                             break;
                         }
                     }
-                    this.addToken(hasSuffix ? 'DECIMAL TIPADO' : 'DECIMAL', lex, startLine, startCol);
+
+                    if (!invalidNumber)
+                        this.addToken(hasSuffix ? 'DECIMAL TIPADO' : 'DECIMAL', lex, startLine, startCol);
+
                     continue;
                 }
+
+                if (invalidNumber) continue;
 
                 let matched = false;
                 for (let suf of [...inum, ...unum]) {
@@ -165,11 +246,12 @@ class Lexer {
                         break;
                     }
                 }
+
                 if (!matched) this.addToken('ENTERO', lex, startLine, startCol);
                 continue;
             }
 
-            // Separadores
+            // Símbolos lógicos
 
             if (ch === ';') { this.addToken('FIN DE SENTENCIA', this.advance(), startLine, startCol); continue; }
             if (ch === ',') { this.addToken('SEPARADOR LÓGICO', this.advance(), startLine, startCol); continue; }
@@ -179,19 +261,29 @@ class Lexer {
             }
             if (ch === '.') { this.addToken('OPERADOR PUNTO', this.advance(), startLine, startCol); continue; }
 
-            // Patrón anónimo (guion bajo)
-
+            // Patrón anónimo (“_”)
             if (ch === '_') {
-                this.advance();
-                this.addToken('PATRÓN ANÓNIMO', '_', startLine, startCol);
-                continue;
+                const next = this.peek(1);
+
+                // Si está solo o seguido de espacio, salto de línea o fin de archivo
+
+                if (next === null || /\s|[\n\r;]/.test(next)) {
+                    this.advance();
+                    this.addToken('PATRÓN ANÓNIMO', '_', startLine, startCol);
+                    continue;
+                }
+
+                // Si le sigue una letra o número, entonces será un identificador
             }
 
-            // Identificadores / keywords / macros
-
-            if (this.isLetter(ch)) {
+            //  Identificadores, macros y palabras reservadas
+            
+            if (this.isLetter(ch) || ch === '_') {
                 let lex = this.advance();
-                while (this.isAlnum(this.peek())) lex += this.advance();
+
+                while (this.peek() !== null && /[A-Za-z0-9_ÁÉÍÓÚÜÑáéíóúüñ]/.test(this.peek())) {
+                    lex += this.advance();
+                }
 
                 if (lex.length > 15) {
                     this.errors.add("Identificador muy largo", startLine, startCol);
@@ -209,7 +301,7 @@ class Lexer {
                 continue;
             }
 
-            // Caracteres (char)
+            // Caracteres
 
             if (ch === "'") {
                 this.advance();
@@ -235,7 +327,7 @@ class Lexer {
                 continue;
             }
 
-            // Cadenas
+            // Cadenas de texto
 
             if (ch === '"') {
                 this.advance();
@@ -296,6 +388,8 @@ class Lexer {
                 continue;
             }
 
+            // Paréntesis y llaves
+
             if (ch === '(') { this.addToken('APERTURA DE PARENTESIS', this.advance(), startLine, startCol); continue; }
             if (ch === ')') { this.addToken('CIERRE DE PARENTESIS', this.advance(), startLine, startCol); continue; }
             if (ch === '{') { this.addToken('APERTURA DE LLAVE', this.advance(), startLine, startCol); continue; }
@@ -303,7 +397,7 @@ class Lexer {
             if (ch === '[') { this.addToken('APERTURA DE CORCHETE', this.advance(), startLine, startCol); continue; }
             if (ch === ']') { this.addToken('CIERRE DE CORCHETE', this.advance(), startLine, startCol); continue; }
 
-            // Token desconocido
+            // Si llegamos aquí, el carácter no es reconocido
 
             this.errors.add(`Token no reconocido '${ch}'`, startLine, startCol);
             this.advance();
