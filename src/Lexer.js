@@ -65,9 +65,10 @@ class Lexer {
 
             if (' \t\r\n'.includes(ch)) { this.advance(); continue; }
 
-            // Comentarios
-
             if (ch === '/') {
+
+                // // Comentario de línea
+
                 if (this.peek(1) === '/') {
                     this.advance(); this.advance();
                     let lex = "//";
@@ -75,6 +76,9 @@ class Lexer {
                     this.addToken('COMENTARIO DE LÍNEA', lex, startLine, startCol);
                     continue;
                 }
+
+                // /* Comentario de bloque */
+
                 if (this.peek(1) === '*') {
                     this.advance(); this.advance();
                     let lex = "/*";
@@ -92,6 +96,17 @@ class Lexer {
                     else this.addToken('COMENTARIO DE BLOQUE', lex, startLine, startCol);
                     continue;
                 }
+
+                // /= operador compuesto
+
+                if (this.peek(1) === '=') {
+                    this.addToken('OPERADOR DE ASIGNACIÓN ARITMÉTICA', '/=', startLine, startCol);
+                    this.advance(); this.advance();
+                    continue;
+                }
+
+                // / operador simple
+
                 this.addToken('OPERADOR ARITMÉTICO', this.advance(), startLine, startCol);
                 continue;
             }
@@ -139,8 +154,6 @@ class Lexer {
                 let sign = '';
                 if (ch === '+' || ch === '-') {
 
-                    // Detecta si el signo pertenece al número (unario)
-
                     const prev = this.tokens[this.tokens.length - 1];
                     const puedeSerUnario =
                         !prev ||
@@ -149,8 +162,8 @@ class Lexer {
                             'SEPARADOR LÓGICO', 'FIN DE SENTENCIA', 'RETORNO DE CARRO', 'SALTO DE LÍNEA']
                             .includes(prev.type);
                     if (puedeSerUnario) {
-                        sign = this.advance(); // consume + o -
-                        ch = this.peek();      // actualiza ch al primer dígito
+                        sign = this.advance();
+                        ch = this.peek();
                     }
                 }
 
@@ -167,8 +180,6 @@ class Lexer {
                 let lex = sign + this.advance();
                 let lastWasUnderscore = false;
                 let invalidNumber = false;
-
-                // Parte entera con validación de guiones bajos
 
                 while (this.isDigit(this.peek()) || this.peek() === '_') {
                     if (this.peek() === '_') {
@@ -190,8 +201,6 @@ class Lexer {
                         lex += this.advance();
                     }
                 }
-
-                // Parte decimal
 
                 if (!invalidNumber && this.peek() === '.' && this.isDigit(this.peek(1))) {
                     lex += this.advance();
@@ -262,22 +271,19 @@ class Lexer {
             if (ch === '.') { this.addToken('OPERADOR PUNTO', this.advance(), startLine, startCol); continue; }
 
             // Patrón anónimo (“_”)
+            
             if (ch === '_') {
                 const next = this.peek(1);
-
-                // Si está solo o seguido de espacio, salto de línea o fin de archivo
 
                 if (next === null || /\s|[\n\r;]/.test(next)) {
                     this.advance();
                     this.addToken('PATRÓN ANÓNIMO', '_', startLine, startCol);
                     continue;
                 }
-
-                // Si le sigue una letra o número, entonces será un identificador
             }
 
-            //  Identificadores, macros y palabras reservadas
-            
+            // Identificadores
+
             if (this.isLetter(ch) || ch === '_') {
                 let lex = this.advance();
 
@@ -345,7 +351,7 @@ class Lexer {
                 continue;
             }
 
-            // Operadores y símbolos varios
+            // Operadores
 
             if (ch === '=' && this.peek(1) === '>') {
                 this.addToken('OPERADOR FLECHA', '=>', startLine, startCol);
@@ -363,6 +369,10 @@ class Lexer {
                 this.addToken('OPERADOR DE COMPARACIÓN', two, startLine, startCol);
                 this.advance(); this.advance(); continue;
             }
+            if (ch === '=') {
+                this.addToken('OPERADOR DE ASIGNACIÓN', this.advance(), startLine, startCol);
+                continue;
+            }
             if (['<', '>'].includes(ch)) {
                 this.addToken('OPERADOR DE COMPARACIÓN', this.advance(), startLine, startCol);
                 continue;
@@ -371,16 +381,12 @@ class Lexer {
                 this.addToken('OPERADOR LÓGICO', two, startLine, startCol);
                 this.advance(); this.advance(); continue;
             }
-            if (['+=', '-='].includes(two)) {
-                this.addToken('OPERADOR DE INCREMENTO/DECREMENTO', two, startLine, startCol);
+            if (['+=', '-=', '*=', '/=', '%='].includes(two)) {
+                this.addToken('OPERADOR DE ASIGNACIÓN ARITMÉTICA', two, startLine, startCol);
                 this.advance(); this.advance(); continue;
             }
             if ('+-*/%'.includes(ch)) {
                 this.addToken('OPERADOR ARITMÉTICO', this.advance(), startLine, startCol);
-                continue;
-            }
-            if (':='.includes(ch)) {
-                this.addToken('OPERADOR DE ASIGNACIÓN', this.advance(), startLine, startCol);
                 continue;
             }
             if ('&|^!'.includes(ch)) {
@@ -397,7 +403,7 @@ class Lexer {
             if (ch === '[') { this.addToken('APERTURA DE CORCHETE', this.advance(), startLine, startCol); continue; }
             if (ch === ']') { this.addToken('CIERRE DE CORCHETE', this.advance(), startLine, startCol); continue; }
 
-            // Si llegamos aquí, el carácter no es reconocido
+            // Token desconocido
 
             this.errors.add(`Token no reconocido '${ch}'`, startLine, startCol);
             this.advance();
